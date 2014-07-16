@@ -132,7 +132,6 @@ The final hierarchy will likely look something like this:
 					gcm
 						CordovaGCMBroadcastReceiver.java
 						GCMIntentService.java
-						PushHandlerActivity.java
 						PushPlugin.java
 				{company_name}
 					{intent_name}
@@ -152,7 +151,6 @@ The final hierarchy will likely look something like this:
 3) Modify your `AndroidManifest.xml` and add the following **activity**, **receiver** and **service** tags to your **application** section. (See the Sample_AndroidManifest.xml file in the Example folder.)
 
 ```xml
-<activity android:name="com.plugin.gcm.PushHandlerActivity"/>
 <receiver android:name="com.plugin.gcm.CordovaGCMBroadcastReceiver" android:permission="com.google.android.c2dm.permission.SEND" >
 	<intent-filter>
 		<action android:name="com.google.android.c2dm.intent.RECEIVE" />
