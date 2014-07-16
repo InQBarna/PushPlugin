@@ -54,14 +54,21 @@
 				</intent-filter>
 			</receiver>
 			<service android:name="com.plugin.gcm.GCMIntentService" />
+			<meta-data android:name="com.google.android.gcm.version" android:value="@integer/google_play_services_version"/>
 		</config-file>
 
-		<source-file src="src/android/libs/gcm.jar" target-dir="libs/" />
 		<source-file src="src/android/com/plugin/gcm/CordovaGCMBroadcastReceiver.java" target-dir="src/com/plugin/gcm/" />
 		<source-file src="src/android/com/plugin/gcm/GCMIntentService.java" target-dir="src/com/plugin/gcm/" />
 		<source-file src="src/android/com/plugin/gcm/PushHandlerActivity.java" target-dir="src/com/plugin/gcm/" />
 		<source-file src="src/android/com/plugin/gcm/PushPlugin.java" target-dir="src/com/plugin/gcm/" />
-		<source-file src="src/android/com/plugin/android-support-v13.jar" target-dir="libs/" />
+		<source-file src="src/android/libs/android-support-v4.jar" target-dir="libs/" />
+
+		<info>
+		You need to install __Google Play Services__ from the `Android Extras` section using the Android SDK manager (run `android`).  
+
+		You need to add the following line to your `local.properties`
+		android.library.reference.1=PATH_TO_ANDROID_SDK/sdk/extras/google/google_play_services/libproject/google-play-services_lib
+		</info>
 
 	</platform>
 
