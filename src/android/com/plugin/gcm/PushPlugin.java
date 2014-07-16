@@ -1,6 +1,11 @@
 package com.plugin.gcm;
 
 import java.io.IOException;
+import java.util.Random;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.cordova.CallbackContext;
@@ -54,7 +59,83 @@ public class PushPlugin extends CordovaPlugin {
     AtomicInteger msgId = new AtomicInteger();
 
     String regid;
+    private static final ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
 
+    private static final Random randGen = new Random(System.currentTimeMillis());
+	private final class RegisterTask implements Runnable {
+		private final CallbackContext callbacks;
+		
+		private final int attempts;
+		private static final int RETRY_INTERVAL_MS = 50;
+		
+
+		private static final int MAX_ATTEMPTS = 10;
+
+		private RegisterTask(CallbackContext callbacks) {
+			this.callbacks = callbacks;
+			attempts = 0;
+		}
+		
+		private RegisterTask(CallbackContext callbacks, int attempts) {
+			this.callbacks = callbacks;
+			this.attempts = attempts;
+		}
+		
+		private void retask() {
+			if (attempts < MAX_ATTEMPTS) {
+				RegisterTask task = new RegisterTask(callbacks, attempts + 1);
+				int msDelay = RETRY_INTERVAL_MS * randGen.nextInt((int)Math.pow(2, task.attempts));
+				executor.schedule(task, msDelay, TimeUnit.MILLISECONDS);
+			} else {
+				Log.e(TAG, "Max retries reached trying to get registration ID");
+				postError("Max retries reached trying to get registration ID");
+			}
+		}
+
+		@Override
+		public void run() {
+		    String msg = "";
+		    Activity act = cordova.getActivity();
+		    if (act == null) {
+		    	Log.i(TAG, "Trying to register when activity is not available");
+		    	postError("Activity is not ready");
+		    	return;
+		    }
+		    try {
+		        if (gcm == null) {
+		            gcm = GoogleCloudMessaging.getInstance(act);
+		        }
+		        regid = gcm.register(SENDER_ID);
+		        msg = "Device registered, registration ID=" + regid;
+
+		        // You should send the registration ID to your server over HTTP, so it
+		        // can use GCM/HTTP or CCS to send messages to your app.
+		        sendRegistrationIdToBackend(callbacks);
+
+		        // For this demo: we don't need to send it because the device will send
+		        // upstream messages to a server that echo back the message using the
+		        // 'from' address in the message.
+
+		        // Persist the regID - no need to register again.
+		        storeRegistrationId(act, regid);
+		        return;
+		    } catch (IOException ex) {
+		        msg = "Error :" + ex.getMessage();
+		        // If there is an error, don't just keep trying to register.
+		        // Require the user to click a button again, or perform
+		        // exponential back-off.
+		        retask();
+		    }
+		    
+		}
+
+		protected void postError(String v) {
+			if (!TextUtils.isEmpty(v)) {
+				callbacks.error(v);
+			}
+		}
+	}
+	
 	
 	public interface PushClientProvider {
 		public void generateNotification(Context ctxt, Bundle extras);
@@ -285,50 +366,8 @@ public class PushPlugin extends CordovaPlugin {
      * @param callbacks TODO
      */
     private void registerInBackground(final CallbackContext callbacks) {
-        new AsyncTask<Void, Void, String>() {
-            @Override
-            protected String doInBackground(Void... params) {
-                String msg = "";
-                Activity act = cordova.getActivity();
-                if (act == null) {
-                	Log.i(TAG, "Trying to register when activity is not available");
-                	return "Activity is not ready";
-                }
-                try {
-                    if (gcm == null) {
-                        gcm = GoogleCloudMessaging.getInstance(act);
-                    }
-                    regid = gcm.register(SENDER_ID);
-                    msg = "Device registered, registration ID=" + regid;
-
-                    // You should send the registration ID to your server over HTTP, so it
-                    // can use GCM/HTTP or CCS to send messages to your app.
-                    sendRegistrationIdToBackend(callbacks);
-
-                    // For this demo: we don't need to send it because the device will send
-                    // upstream messages to a server that echo back the message using the
-                    // 'from' address in the message.
-
-                    // Persist the regID - no need to register again.
-                    storeRegistrationId(act, regid);
-                    return null;
-                } catch (IOException ex) {
-                    msg = "Error :" + ex.getMessage();
-                    // If there is an error, don't just keep trying to register.
-                    // Require the user to click a button again, or perform
-                    // exponential back-off.
-                }
-                Log.e(TAG, msg);
-                return msg;
-            }
-
-            @Override
-            protected void onPostExecute(String v) {
-            	if (!TextUtils.isEmpty(v)) {
-            		callbacks.error(v);
-            	}
-            }
-        }.execute(null, null, null);
+        RegisterTask task = new RegisterTask(callbacks);
+        executor.execute(task);
     }
 
     /**
