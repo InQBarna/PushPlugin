@@ -53,7 +53,7 @@
 				</intent-filter>
 			</receiver>
 			<service android:name="com.plugin.gcm.GCMIntentService" />
-			<meta-data android:name="com.google.android.gcm.version" android:value="@integer/google_play_services_version"/>
+			<meta-data android:name="com.google.android.gms.version" android:value="@integer/google_play_services_version"/>
 		</config-file>
 
 		<source-file src="src/android/com/plugin/gcm/CordovaGCMBroadcastReceiver.java" target-dir="src/com/plugin/gcm/" />
